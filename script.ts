@@ -4,7 +4,8 @@ import { Parser, transforms } from "json2csv";
 
 const getPage = (page: number, pageSize = 50) =>
   axios.get(
-    `https://data-api.socialjet.pro/api-dev/v1/group-telegram?viewsType=last24h&priceType=post&postsType=last24h&growType=month&page-size=${pageSize}&page=${page}&sortBy=subscribersCount&sortDirection=desc`,
+    `
+    https://data-api.socialjet.pro/api-dev/v1/group-telegram?subscriberCountries[]=%D0%A3%D0%B7%D0%B1%D0%B5%D0%BA%D0%B8%D1%81%D1%82%D0%B0%D0%BD&viewsType=last24h&priceType=post&postsType=last24h&growType=month&page-size=${pageSize}&page=${page}&sortBy=subscribersCount&sortDirection=desc`,
     {
       headers: {
         accept: "application/json, text/plain, */*",
@@ -60,8 +61,10 @@ const fields = [
 const parser = new Parser({
   // header: false,
   transforms: [
-    transforms.flatten({separator: "__"}),
-    transforms.unwind({ paths: ["categories", "subscribersStatistic.countries"] }),
+    transforms.flatten({ separator: "__" }),
+    transforms.unwind({
+      paths: ["categories", "subscribersStatistic.countries"],
+    }),
   ],
 });
 //
@@ -71,15 +74,19 @@ const getData = async () => {
   let pageIndex = 1;
 
   while (hasNext) {
-    const page = await getPage(pageIndex, 2000);
-    hasNext = false
-    if (page?.data?.data?.length > 0) {
-      hasNext = true;     
-      pageIndex += 1; 
-      fs.appendFileSync("./data.csv", parser.parse(page?.data?.data));
+    try {
+      const page = await getPage(pageIndex, 2000);
+      hasNext = false;
+      if (page?.data?.data?.length > 0) {
+        hasNext = true;
+        pageIndex += 1;
+        fs.appendFileSync("./data.csv", parser.parse(page?.data?.data));
+      }
+      console.log(`done page ${pageIndex}. has next: ${hasNext}`);
+    } catch (error) {
+      hasNext = false;
+      console.log(error);
     }
-    console.log(`done page ${pageIndex}. has next: ${hasNext}`);
-    
   }
 };
 
